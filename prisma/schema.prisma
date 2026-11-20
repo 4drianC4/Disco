@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(STAFF)
+  active       Boolean   @default(true)
+  sales        BarSale[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Event {
+  id             String       @id @default(uuid())
+  name           String
+  startsAt       DateTime
+  capacity       Int
+  admissionCount Int          @default(0)
+  status         EventStatus  @default(DRAFT)
+  admissions     Admission[]
+  reservations   Reservation[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Admission {
+  id          String    @id @default(uuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  holderName  String
+  checkedInAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([eventId])
+}
+
+model Category {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  drinks Drink[]
+}
+
+model Drink {
+  id         String        @id @default(uuid())
+  name       String
+  categoryId String
+  category   Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  priceCents Int
+  available  Boolean       @default(true)
+  saleItems  BarSaleItem[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([categoryId])
+}
+
+model BarSale {
+  id          String        @id @default(uuid())
+  requestKey  String        @unique
+  requestHash String
+  totalCents  Int
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items       BarSaleItem[]
+  createdAt   DateTime      @default(now())
+
+  @@index([createdAt])
+}
+
+model BarSaleItem {
+  id             String   @id @default(uuid())
+  saleId         String
+  sale           BarSale  @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  drinkId        String
+  drink          Drink    @relation(fields: [drinkId], references: [id], onDelete: Restrict)
+  quantity       Int
+  unitPriceCents Int
+}
+
+model ClubTable {
+  id           String        @id @default(uuid())
+  number       Int           @unique
+  capacity     Int
+  reservations Reservation[]
+}
+
+model Reservation {
+  id        String    @id @default(uuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  tableId   String
+  table     ClubTable @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  guestName String
+  createdAt DateTime  @default(now())
+
+  @@unique([eventId, tableId])
+}
